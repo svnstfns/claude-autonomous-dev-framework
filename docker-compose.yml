@@ -48,7 +48,7 @@ services:
     networks:
       - claude-network
 
-  # Framework Core - Agent orchestration
+  # Framework Core - Agent orchestration with Claude Code CLI integration
   framework:
     build:
       context: ./services/framework
@@ -59,12 +59,13 @@ services:
     volumes:
       - ./data/framework:/app/data
       - ./logs/framework:/app/logs
+      - ./.claude:/app/.claude:ro
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - MEMORY_SERVICE_URL=https://memory-service:8443/mcp
       - REDIS_URL=redis://redis:6379
       - FRAMEWORK_ENV=production
-      - AGENT_POOL_SIZE=5
+      - FRAMEWORK_PORT=8080
     depends_on:
       memory-service:
         condition: service_healthy
@@ -80,7 +81,7 @@ services:
     networks:
       - claude-network
 
-  # Dashboard - Real-time monitoring
+  # Dashboard - Real-time monitoring and reporting interface
   dashboard:
     build:
       context: ./services/dashboard
@@ -96,6 +97,7 @@ services:
       - MEMORY_API_URL=https://memory-service:8443/mcp
       - REDIS_URL=redis://redis:6379
       - DASHBOARD_ENV=production
+      - DASHBOARD_PORT=8081
     depends_on:
       framework:
         condition: service_healthy

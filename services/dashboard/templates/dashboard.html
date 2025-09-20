@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Autonomous Development Framework - Dashboard</title>
+    <link href="{{ url_for('static', path='css/dashboard.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Claude Autonomous Development Framework</h1>
+            <p class="subtitle">Real-time monitoring and control dashboard</p>
+            <p class="timestamp">Last updated: {{ timestamp }}</p>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Framework Status -->
+            <div class="card">
+                <h2>🏗️ Framework Status</h2>
+                <div class="status-info">
+                    <p><strong>Status:</strong> {{ framework_status.get('status', 'unknown') }}</p>
+                    <p><strong>Environment:</strong> {{ framework_status.get('environment', 'unknown') }}</p>
+                    <p><strong>Version:</strong> {{ framework_status.get('version', 'unknown') }}</p>
+                </div>
+            </div>
+
+            <!-- Services Health -->
+            <div class="card">
+                <h2>🔧 Services Health</h2>
+                <div class="services-list">
+                    {% for service, status in framework_status.get('services', {}).items() %}
+                    <div class="service-status">
+                        <span class="service-name">{{ service }}</span>
+                        <span class="status-indicator {{ 'healthy' if status in ['healthy', 'connected', 'running'] else 'unhealthy' }}">
+                            {{ status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Memory Entries -->
+            <div class="card">
+                <h2>🧠 Recent Memory Entries</h2>
+                <div class="memory-entries">
+                    {% for memory in recent_memories[:5] %}
+                    <div class="memory-entry">
+                        <p class="memory-content">{{ memory.get('content', 'No content')[:100] }}{% if memory.get('content', '')|length > 100 %}...{% endif %}</p>
+                        <p class="memory-tags">
+                            {% for tag in memory.get('tags', []) %}
+                            <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h2>⚡ Quick Actions</h2>
+                <div class="actions">
+                    <button onclick="refreshDashboard()">🔄 Refresh</button>
+                    <button onclick="viewLogs()">📋 View Logs</button>
+                    <button onclick="checkHealth()">🩺 Health Check</button>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Claude Autonomous Development Framework v0.1.0 | Memory-Enhanced Development</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', path='js/dashboard.js') }}"></script>
+</body>
+</html>

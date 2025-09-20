@@ -1,0 +1,175 @@
+/* Claude Framework Dashboard Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.subtitle {
+    font-size: 1.2em;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.timestamp {
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h2 {
+    color: #4a5568;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    border-bottom: 2px solid #edf2f7;
+    padding-bottom: 10px;
+}
+
+.status-info p {
+    margin-bottom: 8px;
+    padding: 5px 0;
+}
+
+.services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.service-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f7fafc;
+    border-radius: 5px;
+}
+
+.service-name {
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-indicator {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-indicator.healthy {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-indicator.unhealthy {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.memory-entries {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.memory-entry {
+    padding: 10px 0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.memory-entry:last-child {
+    border-bottom: none;
+}
+
+.memory-content {
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.memory-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.tag {
+    background: #bee3f8;
+    color: #2c5282;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.actions button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background: #4299e1;
+    color: white;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.2s;
+}
+
+.actions button:hover {
+    background: #3182ce;
+}
+
+footer {
+    text-align: center;
+    color: white;
+    opacity: 0.8;
+    font-size: 0.9em;
+}
