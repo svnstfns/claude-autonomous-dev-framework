@@ -25,7 +25,9 @@ logs/
 *.log.*
 
 # Backups
-backups/
+# Backups (exclude content but allow framework migration backup)
+backups/*
+!backups/cccli-framework-backup-*.tar.gz
 *.backup
 *.bak
 
