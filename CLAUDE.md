@@ -71,6 +71,33 @@ Transform software development through autonomous, memory-enhanced AI agent orch
 
 ---
 
+## 📋 Templates & Scaffolding
+
+### Template Library
+@templates/README
+
+### Agent Templates
+@templates/agents/requirements-engineer-template
+@templates/agents/system-architect-template
+@templates/agents/implementation-planner-template
+
+### Command Templates
+@templates/commands/memory
+@templates/commands/research
+@templates/commands/architecture
+@templates/commands/implement
+
+### Workflow Templates
+@templates/workflows/feature-development
+@templates/workflows/bug-fix
+@templates/workflows/release
+@templates/workflows/refactoring
+
+### Development Rules
+@templates/rules/python-development
+
+---
+
 ## 🛡️ Safety & Guidelines
 
 ### Critical Directives (READ FIRST)
@@ -155,10 +182,29 @@ This framework consolidates the original Claude Code CLI implementation from `/U
 - **Docker Integration**: Single compose stack with health monitoring
 - **Data Preservation**: All memory data preserved during migration
 
-#### 4. **Claude Code CLI Compliance** ✅
+#### 4. **Memory Hooks Integration** ✅
+- **Source**: `shared/hooks/memory-hooks/` → **Target**: `.claude/hooks/memory-hooks/`
+- **Components**: Core hooks (session-start, session-end, memory-retrieval, topic-change)
+- **Features**: Automatic context loading, smart memory injection, session tracking
+- **Integration**: Framework memory service compatibility with MCP protocol
+
+#### 5. **Python Agent Services** ✅
+- **Source**: `shared/agents/requirements_engineer_agent.py` → **Target**: `services/agents/requirements-engineer/`
+- **Implementation**: Advanced NLP-based requirements engineering service
+- **Dependencies**: NLTK, spaCy for natural language processing
+- **Integration**: Docker service with framework coordination (port 8082)
+
+#### 6. **Template Library** ✅
+- **Sources**: `templates/*` → **Target**: `.claude/templates/`
+- **Categories**: Agents (3), Commands (10+), Workflows (7), Rules (1)
+- **Format**: Claude Code CLI compliant with YAML frontmatter
+- **Alignment**: Consistent with framework conventions and @import system
+
+#### 7. **Claude Code CLI Compliance** ✅
 - **Structure**: Proper `.claude/` directory organization
 - **Conventions**: Kebab-case naming, @import syntax, agent specifications
 - **Best Practices**: Following official Anthropic Claude Code CLI guidelines
+- **Template Standards**: YAML frontmatter, progress indicators, memory integration
 
 ### Data Preservation Strategy
 
