@@ -1,0 +1,151 @@
+# Claude Autonomous Development Framework - Git Ignore
+
+# Environment and configuration
+.env.local
+.env.production
+.env.test
+*.env.backup
+
+# Data directories (preserve structure but ignore content)
+data/memory/*.db
+data/memory/*.db-*
+data/framework/*
+data/dashboard/*
+data/redis/*
+data/projects/*
+!data/memory/.gitkeep
+!data/framework/.gitkeep
+!data/dashboard/.gitkeep
+!data/redis/.gitkeep
+!data/projects/.gitkeep
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Docker
+.docker/
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node modules (for dashboard/frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Build artifacts
+*.tar.gz
+*.zip
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Memory service specific
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Framework specific
+agent-state/
+project-cache/
+template-cache/
+performance-data/
+
+# Security
+*.key
+*.pem
+*.crt
+*.p12
+secrets/
+credentials/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Documentation
+docs/_build/
+site/
+
+# Local development
+.local/
+local-config/
+dev-override/

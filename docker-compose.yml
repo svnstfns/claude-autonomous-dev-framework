@@ -1,0 +1,146 @@
+# Claude Autonomous Development Framework
+# Memory-enhanced multi-agent orchestration system
+
+version: '3.8'
+
+services:
+  # Memory Service - Semantic knowledge storage
+  memory-service:
+    build:
+      context: ./services/memory
+      dockerfile: Dockerfile.simple
+    container_name: claude-memory-service
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./data/memory:/app/data
+      - ./logs/memory:/app/logs
+    environment:
+      - MEMORY_DB_PATH=/app/data/memories.db
+      - LOG_LEVEL=INFO
+      - MCP_SERVER_PORT=8443
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - claude-network
+
+  # Redis Message Broker - Agent coordination
+  redis:
+    image: redis:7-alpine
+    container_name: claude-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - claude-network
+
+  # Framework Core - Agent orchestration
+  framework:
+    build:
+      context: ./services/framework
+      dockerfile: Dockerfile
+    container_name: claude-framework
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/framework:/app/data
+      - ./logs/framework:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - MEMORY_SERVICE_URL=https://memory-service:8443/mcp
+      - REDIS_URL=redis://redis:6379
+      - FRAMEWORK_ENV=production
+      - AGENT_POOL_SIZE=5
+    depends_on:
+      memory-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - claude-network
+
+  # Dashboard - Real-time monitoring
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: claude-dashboard
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data/dashboard:/app/data
+      - ./logs/dashboard:/app/logs
+    environment:
+      - FRAMEWORK_API_URL=http://framework:8080
+      - MEMORY_API_URL=https://memory-service:8443/mcp
+      - REDIS_URL=redis://redis:6379
+      - DASHBOARD_ENV=production
+    depends_on:
+      framework:
+        condition: service_healthy
+      memory-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - claude-network
+
+  # Project Template - Dynamic project containers
+  project-template:
+    build:
+      context: ./services/project-template
+      dockerfile: Dockerfile
+    container_name: claude-project-template
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./templates:/app/templates:ro
+      - ./data/projects:/app/projects
+    environment:
+      - TEMPLATE_REGISTRY_PATH=/app/templates
+      - PROJECT_DATA_PATH=/app/projects
+      - MAX_CONCURRENT_PROJECTS=10
+    networks:
+      - claude-network
+    profiles:
+      - project-creation
+
+volumes:
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+
+networks:
+  claude-network:
+    driver: bridge
+    name: claude-autonomous-network

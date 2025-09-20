@@ -1,0 +1,67 @@
+# Dockerfile.simple for Claude Memory Service
+# This version avoids PyYAML dependency conflicts
+
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    sqlite3 \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Create necessary directories
+RUN mkdir -p /app/data /app/logs /app/src
+
+# Install Python dependencies (avoiding PyYAML conflicts)
+RUN pip install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.24.0 \
+    sqlite-vec==0.1.1 \
+    pydantic==2.5.0 \
+    httpx==0.25.0 \
+    python-multipart==0.0.6 \
+    python-json-logger==2.0.7
+
+# Copy memory service source
+COPY src/ /app/src/
+COPY config/ /app/config/
+
+# Set environment variables
+ENV PYTHONPATH=/app/src
+ENV MEMORY_DB_PATH=/app/data/memories.db
+ENV LOG_LEVEL=INFO
+ENV MCP_SERVER_PORT=8443
+
+# Create startup script
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🧠 Starting Claude Memory Service..."
+
+# Initialize database if it doesn't exist
+if [ ! -f "/app/data/memories.db" ]; then
+    echo "📝 Initializing memory database..."
+    python /app/src/init_db.py
+fi
+
+# Start the memory service
+echo "🚀 Memory service starting on port $MCP_SERVER_PORT"
+exec python /app/src/memory_service.py
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -k -f https://localhost:8443/health || exit 1
+
+# Expose port
+EXPOSE 8443
+
+# Start the service
+CMD ["/app/start.sh"]
