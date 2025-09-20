@@ -1,0 +1,25 @@
+# Hadolint configuration for Claude Framework
+# Docker best practices linting
+
+rules:
+  # Ignore some rules that may not apply to our use case
+  DL3008: ignore  # Pin versions in apt get install (we use specific base images)
+  DL3009: ignore  # Delete the apt-get lists after installing something
+  DL3015: ignore  # Avoid additional packages by specifying `--no-install-recommends`
+
+# Allowed registries
+registries:
+  - docker.io
+  - ghcr.io
+
+# Trusted base images
+trustedRegistries:
+  - docker.io/library
+  - python
+  - redis
+  - nginx
+
+# Ignore paths
+ignored:
+  - "*.md"
+  - ".git"

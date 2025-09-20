@@ -1,0 +1,403 @@
+name: Claude Framework CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  MEMORY_SERVICE_URL: https://localhost:8443/mcp
+
+jobs:
+  # Framework Health Check & Memory Integration Test
+  framework-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Start Framework Services
+      run: |
+        echo "🚀 Starting Claude Framework for CI/CD validation..."
+
+        # Start core services
+        docker-compose up -d memory-service redis
+
+        # Wait for services to be ready
+        sleep 30
+
+        # Health checks
+        echo "🔍 Performing health checks..."
+
+        # Check memory service
+        timeout 60 bash -c 'until curl -k -f https://localhost:8443/health; do sleep 2; done'
+
+        # Check Redis
+        timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping | grep PONG; do sleep 2; done'
+
+        echo "✅ Core services healthy"
+
+    - name: Memory Integration Test
+      run: |
+        echo "🧠 Testing memory service integration..."
+
+        # Test memory store operation
+        STORE_RESULT=$(curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "store_memory",
+              "arguments": {
+                "content": "CI/CD pipeline test: Framework validation successful",
+                "tags": ["ci-cd", "test", "pipeline", "validation"]
+              }
+            }
+          }')
+
+        echo "Store result: $STORE_RESULT"
+
+        # Verify store was successful
+        if echo "$STORE_RESULT" | grep -q '"success": true'; then
+          echo "✅ Memory store test passed"
+        else
+          echo "❌ Memory store test failed"
+          exit 1
+        fi
+
+        # Test memory retrieve operation
+        RETRIEVE_RESULT=$(curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "retrieve_memory",
+              "arguments": {
+                "query": "CI/CD pipeline test",
+                "limit": 5
+              }
+            }
+          }')
+
+        echo "Retrieve result: $RETRIEVE_RESULT"
+
+        # Verify retrieve was successful
+        if echo "$RETRIEVE_RESULT" | grep -q '"success": true'; then
+          echo "✅ Memory retrieve test passed"
+        else
+          echo "❌ Memory retrieve test failed"
+          exit 1
+        fi
+
+    - name: Framework Integration Test
+      run: |
+        echo "🔧 Testing framework integration..."
+
+        # Start full framework
+        docker-compose up -d
+
+        # Wait for all services
+        sleep 60
+
+        # Test all service endpoints
+        services=("memory-service:8443/health" "framework:8080/health" "dashboard:8081/health")
+
+        for service in "${services[@]}"; do
+          IFS=':' read -r name endpoint <<< "$service"
+          echo "Testing $name at $endpoint..."
+
+          if [[ "$endpoint" == *"8443"* ]]; then
+            timeout 30 bash -c "until curl -k -f https://localhost:$endpoint; do sleep 2; done"
+          else
+            timeout 30 bash -c "until curl -f http://localhost:$endpoint; do sleep 2; done"
+          fi
+
+          echo "✅ $name is healthy"
+        done
+
+    - name: Store CI Success Context
+      if: success()
+      run: |
+        echo "📝 Storing CI success context in memory..."
+
+        curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "store_memory",
+              "arguments": {
+                "content": "CI/CD Success: All framework services validated successfully on '"$(date -Iseconds)"'. Commit: '"$GITHUB_SHA"'. Branch: '"$GITHUB_REF_NAME"'",
+                "tags": ["ci-cd", "success", "validation", "github-actions", "'"$GITHUB_REF_NAME"'"]
+              }
+            }
+          }'
+
+    - name: Store CI Failure Context
+      if: failure()
+      run: |
+        echo "📝 Storing CI failure context in memory..."
+
+        curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "store_memory",
+              "arguments": {
+                "content": "CI/CD Failure: Framework validation failed on '"$(date -Iseconds)"'. Commit: '"$GITHUB_SHA"'. Branch: '"$GITHUB_REF_NAME"'. Investigate service health and container issues.",
+                "tags": ["ci-cd", "failure", "troubleshooting", "github-actions", "'"$GITHUB_REF_NAME"'"]
+              }
+            }
+          }'
+
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "🧹 Cleaning up CI environment..."
+        docker-compose down --remove-orphans
+
+  # Security and Code Quality Checks
+  security-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Docker Security Scan
+      run: |
+        echo "🔒 Scanning Docker configurations..."
+
+        # Check for security best practices in Dockerfiles
+        if grep -r "FROM.*:latest" services/*/Dockerfile* || grep -r "FROM.*:latest" */Dockerfile*; then
+          echo "⚠️ Warning: Using 'latest' tags in Dockerfiles"
+        fi
+
+        # Check for exposed ports
+        echo "🔍 Checking exposed ports..."
+        grep -r "EXPOSE\|ports:" . || echo "No explicit port exposures found"
+
+  # Container Build and Registry Push
+  container-build:
+    runs-on: ubuntu-latest
+    needs: [framework-validation, security-analysis]
+
+    strategy:
+      matrix:
+        service: [memory-service]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push container image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/${{ matrix.service }}
+        file: ./services/${{ matrix.service }}/Dockerfile.simple
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Release Automation with Memory Integration
+  release-automation:
+    runs-on: ubuntu-latest
+    needs: [framework-validation, security-analysis, container-build]
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js for Release Notes
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Start Memory Service for Release Context
+      run: |
+        echo "🧠 Starting memory service for release context..."
+        docker-compose up -d memory-service redis
+        sleep 30
+
+    - name: Generate Memory-Enhanced Release Notes
+      run: |
+        echo "📝 Generating memory-enhanced release notes..."
+
+        # Get current version from tag
+        CURRENT_VERSION="${{ github.event.release.tag_name }}"
+        PREVIOUS_VERSION=$(git describe --tags --abbrev=0 HEAD^1 2>/dev/null || echo "v0.0.0")
+
+        echo "Release: $PREVIOUS_VERSION -> $CURRENT_VERSION"
+
+        # Query memory for recent development context
+        MEMORY_CONTEXT=$(curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "retrieve_memory",
+              "arguments": {
+                "query": "milestone implementation success",
+                "limit": 10
+              }
+            }
+          }')
+
+        # Create enhanced release notes
+        cat > enhanced-release-notes.md << 'EOF'
+        # 🚀 Release ${{ github.event.release.tag_name }}
+
+        **Memory-Enhanced Release** generated on $(date +"%Y-%m-%d")
+
+        ## 🎯 Key Highlights
+
+        This release includes automated memory context preservation and intelligent development assistance.
+
+        ## 🧠 Development Context from Memory
+
+        Recent development milestones preserved in framework memory:
+
+        EOF
+
+        # Append memory context to release notes
+        echo "$MEMORY_CONTEXT" | jq -r '.results[]? | "- " + (.content | split("\n")[0])' >> enhanced-release-notes.md || true
+
+        # Store release context
+        curl -s -k -X POST https://localhost:8443/mcp \
+          -H "Content-Type: application/json" \
+          -d '{
+            "method": "tools/call",
+            "params": {
+              "name": "store_memory",
+              "arguments": {
+                "content": "Release '"$CURRENT_VERSION"' completed successfully via GitHub Actions. Previous: '"$PREVIOUS_VERSION"'. Automated pipeline with memory integration successful.",
+                "tags": ["release", "success", "github-actions", "version", "ci-cd"]
+              }
+            }
+          }'
+
+        echo "✅ Memory-enhanced release notes generated"
+
+    - name: Update Release with Enhanced Notes
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ -f enhanced-release-notes.md ]; then
+          gh release edit ${{ github.event.release.tag_name }} \
+            --notes-file enhanced-release-notes.md
+        fi
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down --remove-orphans
+
+  # Deployment Health Check
+  deployment-verification:
+    runs-on: ubuntu-latest
+    needs: [release-automation]
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Verify Deployment Health
+      run: |
+        echo "🔍 Verifying deployment health post-release..."
+
+        # Start framework with latest release
+        docker-compose up -d
+        sleep 60
+
+        # Comprehensive health check
+        services=(
+          "memory-service:https://localhost:8443/health"
+          "framework:http://localhost:8080/health"
+          "dashboard:http://localhost:8081/health"
+        )
+
+        all_healthy=true
+        for service_info in "${services[@]}"; do
+          IFS=':' read -r service_name endpoint <<< "$service_info"
+          echo "Checking $service_name..."
+
+          if curl -k -f "$endpoint" --max-time 10; then
+            echo "✅ $service_name is healthy"
+          else
+            echo "❌ $service_name is unhealthy"
+            all_healthy=false
+          fi
+        done
+
+        if [ "$all_healthy" = true ]; then
+          echo "✅ All services are healthy post-deployment"
+
+          # Store successful deployment context
+          curl -s -k -X POST https://localhost:8443/mcp \
+            -H "Content-Type: application/json" \
+            -d '{
+              "method": "tools/call",
+              "params": {
+                "name": "store_memory",
+                "arguments": {
+                  "content": "Deployment verification successful for release ${{ github.event.release.tag_name }}. All framework services healthy and responsive.",
+                  "tags": ["deployment", "success", "health-check", "release", "${{ github.event.release.tag_name }}"]
+                }
+              }
+            }'
+        else
+          echo "❌ Deployment health check failed"
+          exit 1
+        fi
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down --remove-orphans

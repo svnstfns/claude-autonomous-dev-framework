@@ -1,0 +1,107 @@
+# Claude Autonomous Development Framework
+# Pre-commit hooks with memory integration
+
+repos:
+  # Code formatting and linting
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+
+  # Docker linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        args: [--config, .hadolint.yaml]
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # Python formatting and linting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        files: ^services/.*\.py$
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        files: ^services/.*\.py$
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: package.lock.json
+
+  # Custom memory-integrated hooks
+  - repo: local
+    hooks:
+      # Memory context pre-commit hook
+      - id: memory-pre-commit-context
+        name: Store pre-commit context in memory
+        entry: scripts/hooks/pre-commit-memory.sh
+        language: script
+        stages: [pre-commit]
+        always_run: true
+        pass_filenames: true
+        description: Store commit context in framework memory
+
+      # Framework health check
+      - id: framework-health-check
+        name: Framework health verification
+        entry: scripts/hooks/health-check.sh
+        language: script
+        stages: [pre-commit]
+        always_run: true
+        description: Verify framework services are healthy
+
+      # Git message validation with memory
+      - id: commit-message-memory
+        name: Enhance commit message with memory context
+        entry: scripts/hooks/commit-message-enhancer.sh
+        language: script
+        stages: [prepare-commit-msg]
+        description: Add relevant memory context to commit messages
+
+      # Safety validation
+      - id: safety-validation
+        name: Framework safety validation
+        entry: scripts/hooks/safety-validation.sh
+        language: script
+        stages: [pre-commit]
+        always_run: true
+        description: Validate changes against safety protocols
+
+      # Documentation sync
+      - id: docs-sync
+        name: Documentation synchronization
+        entry: scripts/hooks/docs-sync.sh
+        language: script
+        files: ^(\.claude/|CLAUDE\.md|README\.md)
+        description: Sync documentation with framework changes
+
+# Configuration for tools
+fail_fast: false
+minimum_pre_commit_version: 3.0.0
